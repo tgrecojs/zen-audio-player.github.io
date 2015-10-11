@@ -15,12 +15,16 @@ function onYouTubeIframeAPIReady() {
             'onStateChange': function onPlayerStateChange(event) {
                 // Uncomment for debugging
                 //console.log("State changed to " + event.data);
-                var playerState = event.data;
-
-                 if(playerState === YT.PlayerState.ENDED)
-                 {
-                    showPlayButton();
-                 }
+                switch(event.data) {
+                    case YT.PlayerState.ENDED:
+                    case YT.PlayerState.PAUSED:
+                    case YT.PlayerState.UNSTARTED:
+                        showPlayButton();
+                        break;
+                    default:
+                        showPauseButton();
+                        break;
+                }
             },
             'onError': function(event) {
                 var message = "Got an unknown error, check the JS console.";
@@ -88,20 +92,22 @@ function togglePlayPause() {
     // TODO: google analytics
     if ($("#play").is(":visible")) {
         player.playVideo();
+        // TODO: verify that this works correctly when commented out
         // Autoplay is disabled on mobile, double check before toggling
-        setTimeout(function() {
-            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-                showPauseButton();
-            }
-        }, 1000);
+        // setTimeout(function() {
+        //     if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+        //         showPauseButton();
+        //     }
+        // }, 1000);
     }
     else {
         player.pauseVideo();
-        setTimeout(function() {
-            if (player.getPlayerState() === YT.PlayerState.PAUSED) {
-                showPlayButton();
-            }
-        }, 1000);
+        // TODO: verify that this works correctly when commented out
+        // setTimeout(function() {
+        //     if (player.getPlayerState() === YT.PlayerState.PAUSED) {
+        //         showPlayButton();
+        //     }
+        // }, 1000);
     }
 }
 
