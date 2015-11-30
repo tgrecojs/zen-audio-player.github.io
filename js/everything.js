@@ -3,6 +3,7 @@
  */
 var player;
 var hasError = false;
+var youTubeDataApiKey = "AIzaSyCxVxsC5k46b8I-CLXlF3cZHjpiqP_myVk";
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '300',
@@ -66,6 +67,28 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
+function updateTweetMessage() {
+    var url = "https://zen-audio-player.github.io";
+
+    var opts = {
+        text: "Listen to YouTube videos without the distracting visuals",
+        hashTags: "ZenAudioPlayer",
+        url: url
+    };
+
+    var id = getCurrentVideoID();
+    if (id) {
+        opts.url += "/?v=" + id;
+        opts.text = "I'm listening to " + player.getVideoData().title;
+    }
+
+    twttr.widgets.createHashtagButton(
+        "ZenAudioPlayer",
+        document.getElementById("tweetButton"),
+        opts
+    );
+}
+
 function showPlayButton() {
     $("#play").show();
     $("#pause").hide();
@@ -85,6 +108,17 @@ function togglePlayer() {
     }
     else {
         $("#togglePlayer").text("Show Player");
+    }
+}
+
+function toggleDescription() {
+    var descriptionElement = $('#zen-video-description');
+    descriptionElement.toggle();
+
+    if(descriptionElement.is(':visible'))
+        $('#toggleDescription').text("Hide Description");
+    else {
+        $('#toggleDescription').text("Show Description");
     }
 }
 
@@ -153,7 +187,7 @@ var VOLUME_LOCKED = false;
 function onPlayerReady(event) {
     // Only play the video if it's actually there
     if (getCurrentVideoID()) {
-        $("#zen-video-error").text("");
+        hideErrorMessage();
         event.target.playVideo();
         ga("send", "event", "Playing YouTube video title", player.getVideoData().title);
         ga("send", "event", "Playing YouTube video author", player.getVideoData().author);
@@ -163,6 +197,8 @@ function onPlayerReady(event) {
         togglePlayPause();
 
         $("#playerTime").show();
+
+        updateTweetMessage();
 
         // Update the time(s) every 100ms
         setInterval(function() {
@@ -176,6 +212,8 @@ function onPlayerReady(event) {
         // Clear the now playing text
         $("#zen-video-title").text("");
         $("#playerTime").hide();
+
+        updateTweetMessage();
     }
 }
 
@@ -189,6 +227,12 @@ function stopVideo() {
 function showErrorMessage(message) {
     $("#zen-video-error").text("ERROR: " + message);
     $("#zen-video-error").show();
+}
+
+function hideErrorMessage() {
+    if(!hasError) {
+        $("#zen-video-error").text("").hide();
+    }
 }
 
 function getParameterByName(url, name) {
@@ -213,7 +257,32 @@ function makeListenURL(videoID) {
     }
     // Remove any #s which break functionality
     url = url.replace("#", "");
+
     return url + "?v=" + videoID;
+}
+
+function getVideoDescription(videoID) {
+    if(window.location.protocol === "file:") {
+        console.log("Skipping video description request as we're running the site locally");
+        return;
+    }
+
+    $.getJSON("https://www.googleapis.com/youtube/v3/videos", {
+        key: youTubeDataApiKey,
+        part: "snippet",
+        fields: "items/snippet/description",
+        id: videoID
+    }, function(data) {
+        if (data.items.length === 0) {
+            showErrorMessage("Video description not found");
+            return;
+        }
+        $("#zen-video-description").text(data.items[0].snippet.description);
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        var responseText = JSON.parse(jqXHR.error().responseText);
+        hasError = true;
+        showErrorMessage(responseText.error.errors[0].message);
+    });
 }
 
 // TODO: this function can go away, the YouTube API will let you play video by URL
@@ -265,6 +334,7 @@ $(function() {
     var currentVideoID = getCurrentVideoID();
     if (currentVideoID) {
         $("#v").attr("value", currentVideoID);
+        getVideoDescription(currentVideoID);
     }
 
     // Hide the demo link if playing the demo video's audio
@@ -275,7 +345,7 @@ $(function() {
     // Handle form submission
     $("#form").submit(function(event) {
         event.preventDefault();
-        var formValue = $("#v").val();
+        var formValue = $.trim($("#v").val());
         if (formValue) {
             var videoID = parseYoutubeVideoID(formValue);
             ga("send", "event", "form submitted", videoID);
@@ -319,6 +389,10 @@ $(function() {
     $("#togglePlayer").click(function(event) {
         togglePlayer();
     });
+
+	$('#toggleDescription').click(function(event) {
+        toggleDescription();
+	});
 
     function updateVolumeFromSlider() {
         if (player) {
