@@ -54,3 +54,7 @@ header, footer {
     background-color: black;
     background-image: none;
 }
+
+img #sponsored {
+    width: 400px;
+}
